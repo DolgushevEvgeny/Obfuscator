@@ -2,6 +2,9 @@ Program Forest;
 
 Const
   tree = 1;
+  car = 2;
+  man = 3;
+  train = 54;
 
 Var
   Map : Array [1..10,1..10] Of Integer;
