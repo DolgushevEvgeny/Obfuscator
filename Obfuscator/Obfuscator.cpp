@@ -15,6 +15,7 @@ using namespace std;
 map<string, string> constants;
 map<string, string> variables;
 map<string, string> procsAndFuncs;
+bool comment_flag = false;
 
 string ToLowerCase(const string &codeString)
 {
@@ -384,6 +385,94 @@ void CheckOnBrackets(const string &codeString)
 			AddVariables(arrayStrings[j]);
 		}
 	}
+}
+
+string DeleteOneStringComment(const string &codeString)
+{
+	bool wasSlesh = false;
+	bool inString = false;
+	string result;
+	for (size_t i = 0; i < codeString.size(); ++i)
+	{
+		if (codeString[i] == '\'' && inString)
+		{
+			inString = false;
+		}
+		if (codeString[i] == '\'' && !inString)
+		{
+			inString = true;
+		}
+		if (!inString)
+		{
+			if (codeString[i] == '/')
+			{
+				if (wasSlesh)
+				{
+					result.push_back(' ');
+					return result;
+				}
+				else
+				{
+					wasSlesh = true;
+				}
+			}
+			else
+			{
+				if (wasSlesh)
+				{
+					wasSlesh = false;
+				}
+				result.push_back(codeString[i]);
+			}
+		}
+		if (inString)
+		{
+			result.push_back(codeString[i]);
+		}
+	}
+	result.push_back(' ');
+	return result;
+}
+
+string DeleteMultiStringComment(const string &codeString)
+{
+	string result;
+	bool wasBracket = false;
+	for (size_t i = 0; i < codeString.size(); ++i)
+	{
+		if (!comment_flag)
+		{
+			if (!wasBracket)
+			{
+				if (codeString[i] == '{')
+				{
+					wasBracket = true;
+					comment_flag = true;
+				}
+				else
+				{
+					result.push_back(codeString[i]);
+				}
+			}
+			else
+			{
+				if (codeString[i] == '}')
+				{
+					wasBracket = false;
+				}
+			}
+		}
+		else
+		{
+			if (codeString[i] == '}')
+			{
+				wasBracket = false;
+				comment_flag = false;
+			}
+		}
+	}
+
+	return result;
 }
 
 void ParseCode(const vector<string> &code)
