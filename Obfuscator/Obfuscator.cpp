@@ -2,13 +2,6 @@
 //
 
 #include "stdafx.h"
-#include <string>
-#include <vector>
-#include <set>
-#include <map>
-#include <fstream>
-#include <iostream>
-#include <sstream>
 
 using namespace std;
 
@@ -56,6 +49,10 @@ void CopyToResultString(string &resultString, const string &originalString, size
 		}
 		else
 		{
+			if (spacesCounter == 1)
+			{
+				resultString += " ";
+			}
 			resultString += originalString[elementPosition];
 			spacesCounter = 0;
 		}
@@ -82,7 +79,7 @@ void FillConstants(const vector<string> &code, size_t &line)
 {
 	string codeString = code[line];
 	string compare = ToLowerCase(codeString);
-	while (compare != "var" || compare != "type")
+	while ((compare != "var") && (compare != "type") && (compare.size()))
 	{
 		istringstream is(codeString);
 		string s;
@@ -91,7 +88,7 @@ void FillConstants(const vector<string> &code, size_t &line)
 		{
 			arrayStrings.push_back(s);
 		}
-		
+
 		for (size_t i = 0; i < arrayStrings.size(); ++i)
 		{
 			arrayStrings[i] = RemoveExtraSpaces(arrayStrings[i]);
@@ -103,7 +100,9 @@ void FillConstants(const vector<string> &code, size_t &line)
 		++line;
 		codeString = code[line];
 		compare = ToLowerCase(codeString);
+		compare = RemoveExtraSpaces(compare);
 	}
+	--line;
 }
 
 bool IsEndString(const string &codeString)
@@ -133,7 +132,7 @@ void ReadCode(const string inputFileName, vector<string> &code)
 	{
 		string codeString;
 		getline(inputFile, codeString);
-
+		codeString = RemoveExtraSpaces(codeString);
 		endStringFlag = IsEndString(codeString);
 
 		istringstream is(codeString);
@@ -185,12 +184,13 @@ bool CheckForNewProcsAndFuncs(const string &newElement)
 string CreateNewVariable(void)
 {
 	string result;
-	size_t size = rand() % 10 + 1;
 	bool compare = true;
+	srand(time(0));
 
 	while (compare)
 	{
 		result.clear();
+		size_t size = rand() % 10 + 1;
 		int letter = rand() % 26 + 97;
 		int toLower = rand() % 2;
 		if (toLower)
@@ -221,7 +221,7 @@ string CreateNewVariable(void)
 			}
 			else
 			{
-				int digit = rand() % 10;
+				int digit = rand() % 10 + 48;
 				result.push_back(digit);
 			}
 		}
@@ -243,17 +243,23 @@ void AddVariables(const string &codeString)
 		}
 		else
 		{
-			while (codeString[i] != ',' || codeString[i] != ':')
+			while ((codeString[i] != ',') && (codeString[i] != ':'))
 			{
 				originalVariable.push_back(codeString[i]);
 				++i;
 			}
-			++i;
+			if ((codeString[i] != ','))
+			{
+				--i;
+			}
 			originalVariable = RemoveExtraSpaces(originalVariable);
 			newVariable = CreateNewVariable();
 
 			variables[originalVariable] = newVariable;
 		}
+
+		originalVariable.clear();
+		newVariable.clear();
 	}
 }
 
@@ -261,6 +267,7 @@ void FillVars(const vector<string> &code, size_t &line)
 {
 	string codeString = code[line];
 	string compare = ToLowerCase(codeString);
+	compare = RemoveExtraSpaces(compare);
 	while (compare != "begin")
 	{
 		string temp = RemoveExtraSpaces(compare);
@@ -268,26 +275,34 @@ void FillVars(const vector<string> &code, size_t &line)
 		str = ToLowerCase(str);
 		if (str == "procedure")
 		{
+			--line;
 			return;
 		}
 		str.erase(str.end() - 1);
 		if (str == "function")
 		{
+			--line;
 			return;
 		}
 		AddVariables(codeString);
+
+		++line;
+		codeString = code[line];
+		compare = ToLowerCase(codeString);
+		compare = RemoveExtraSpaces(compare);
 	}
 }
 
 string CreateNewProceduresAndFunctionsName(void)
 {
 	string result;
-	size_t size = rand() % 10 + 1;
 	bool compare = true;
+	srand(time(0));
 
 	while (compare)
 	{
 		result.clear();
+		size_t size = rand() % 10 + 1;
 		int letter = rand() % 26 + 97;
 		int toLower = rand() % 2;
 		if (toLower)
@@ -326,7 +341,7 @@ string CreateNewProceduresAndFunctionsName(void)
 				}
 				else
 				{
-					int digit = rand() % 10;
+					int digit = rand() % 10 + 48;
 					result.push_back(digit);
 				}
 			}
@@ -343,14 +358,17 @@ void FillProcsAndFuncs(const string &codeString, const size_t position)
 	string originalName, newName;
 	for (size_t i = position; i < codeString.size(); ++i)
 	{
-		if (codeString[i] != '(' || codeString[i] != ';')
+		if ((codeString[i] != '(') && (codeString[i] != ';'))
 		{
 			originalName.push_back(codeString[i]);
+		}
+		else
+		{
+			break;
 		}
 	}
 
 	newName = CreateNewProceduresAndFunctionsName();
-
 	procsAndFuncs[originalName] = newName;
 }
 
@@ -436,7 +454,7 @@ string DeleteOneStringComment(const string &codeString)
 
 string DeleteMultiStringComment(const string &codeString)
 {
-	string result;
+	string result = "";
 	bool wasBracket = false;
 	for (size_t i = 0; i < codeString.size(); ++i)
 	{
@@ -475,42 +493,234 @@ string DeleteMultiStringComment(const string &codeString)
 	return result;
 }
 
+void ExpandCycleFOR(vector<string> &code, const string &cycleType, const string &variable, const string &left, const string &right, bool isInteger, size_t &line)
+{
+	++line;
+	string codeString = ToLowerCase(code[line]);
+	codeString = RemoveExtraSpaces(codeString);
+
+	size_t start, end;
+	int first, second;
+	if (codeString == "begin")
+	{
+		start = line;
+		int cycles = 1;
+		while (cycles)
+		{
+			++line;
+			string codeString = ToLowerCase(code[line]);
+			codeString = RemoveExtraSpaces(codeString);
+			if (codeString == "begin")
+			{
+				++cycles;
+			}
+			codeString.erase(codeString.end() - 1);
+			if (codeString == "end")
+			{
+				--cycles;
+			}
+		}
+		end = line;
+
+		vector<string> cyclesArray;
+		string temp;
+		if (isInteger)
+		{
+			temp += variable;
+			temp += " := ";
+			temp += left;
+			temp += ";";
+		}
+		else
+		{
+			temp += variable;
+			temp += " := ";
+			temp += left;
+			temp += ";";
+		}
+		
+		cyclesArray.push_back(temp);
+		for (size_t i = start; i < end + 1; ++i)
+		{
+			cyclesArray.push_back(code[i]);
+		}
+		
+		string temp1;
+		if (cycleType == "to")
+		{
+			temp1 += ("inc(variable);");
+		}
+		if (cycleType == "downto")
+		{
+			temp1+= ("dec(variable);");
+		}
+		cyclesArray.push_back(temp1);
+	}
+	else
+	{
+
+	}
+}
+
 void ParseCode(const vector<string> &code)
 {
 	for (size_t i = 0; i < code.size(); ++i)
 	{
 		string compare = ToLowerCase(code[i]);
-		if (compare == "const")
+		compare = RemoveExtraSpaces(compare);
+		if (compare.size() > 1)
 		{
-			++i;
-			FillConstants(code, i);
-		}
-		else
-		{
-			compare = ToLowerCase(code[i]);
-			if (compare == "var")
+			//string compare = ToLowerCase(code[i]);
+			//compare = RemoveExtraSpaces(compare);
+			if (compare == "const")
 			{
 				++i;
-				FillVars(code, i);
+				FillConstants(code, i);
 			}
 			else
 			{
-				string temp = RemoveExtraSpaces(compare);
-				string str = temp.substr(0, 9);
-				str = ToLowerCase(str);
-				if (str == "procedure")
+				//compare = ToLowerCase(code[i]);
+				if (compare == "var")
 				{
-					FillProcsAndFuncs(code[i], str.size() + 1);
+					++i;
+					FillVars(code, i);
 				}
-				str.erase(str.end() - 1);
-				if (str == "function")
+				else
 				{
-					FillProcsAndFuncs(code[i], str.size() + 1);
+					string temp = RemoveExtraSpaces(compare);
+					string str = temp.substr(0, 9);
+					str = ToLowerCase(str);
+					if (str == "procedure")
+					{
+						FillProcsAndFuncs(code[i], str.size() + 1);
+						CheckOnBrackets(code[i]);
+					}
+					str.erase(str.end() - 1);
+					if (str == "function")
+					{
+						FillProcsAndFuncs(code[i], str.size() + 1);
+						CheckOnBrackets(code[i]);
+					}	
 				}
-
-				//добавить аргументы в объ€влении функции или процедуры
-				CheckOnBrackets(code[i]);
 			}
+		}
+	}
+}
+
+bool isVariableInteger(const string &codeString)
+{
+	if (isdigit(codeString[0]))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+void ChangeCycleForWHILE()
+{
+
+}
+
+void ChooseTypeOfCycle(vector<string> &code, size_t &line)
+{
+	string codeString = ToLowerCase(code[line]);
+	codeString = RemoveExtraSpaces(codeString);
+	int first_1 = 0, second_1 = 0, difference = 0;
+	string first, second, cycleType, variable;
+
+	///////////
+	istringstream is(codeString);
+	string s;
+	vector<string> arrayStrings;
+	while (getline(is, s, ' '))
+	{
+		arrayStrings.push_back(s);
+	}
+	///////////
+
+
+	variable = arrayStrings[1];
+	cycleType = arrayStrings[4];
+
+	///////////
+	if (isVariableInteger(arrayStrings[3]))
+	{
+		first_1 = atoi(arrayStrings[3].c_str());
+	}
+	else
+	{
+		first = arrayStrings[3];
+	}
+	if (isVariableInteger(arrayStrings[5]))
+	{
+		second_1 = atoi(arrayStrings[5].c_str());
+	}
+	else
+	{
+		second = arrayStrings[5];
+	}
+	///////////
+
+	if (first_1 && second_1)
+	{
+		difference = abs(second_1 - first_1);
+		if (difference <= 5 && difference > 0)
+		{
+			ExpandCycleFOR(code, cycleType, variable, arrayStrings[3], arrayStrings[5], true, line);
+		}
+		else
+		{
+			ChangeCycleForWHILE();/////////////
+		}
+	}
+
+}
+
+void WatchCyclesFOR(vector<string> &code)
+{
+	for (size_t i = 0; i < code.size(); ++i)
+	{
+		string codeString = ToLowerCase(code[i]);
+		codeString = RemoveExtraSpaces(codeString);
+		if (codeString.size() > 2)
+		{
+			string temp(codeString);
+			temp.erase(temp.begin() + 3, temp.end());
+			if (temp == "for")
+			{
+				ChooseTypeOfCycle(code, i);
+			}
+		}
+	}
+}
+
+void DeleteOneStringComment(vector<string> &code)
+{
+	for (size_t i = 0; i < code.size(); ++i)
+	{
+		code[i] = DeleteOneStringComment(code[i]);
+	}
+}
+
+void DeleteMultiStringComment(vector<string> &code)
+{
+	for (size_t i = 0; i < code.size(); ++i)
+	{
+		code[i] = DeleteMultiStringComment(code[i]);
+	}
+}
+
+void SafeCode(const vector<string> &code, const string &inputFileName)
+{
+	ofstream outputFile;
+	outputFile.open(inputFileName, ofstream::out);
+
+	for (size_t i = 0; i < code.size(); ++i)
+	{
+		if (code[i].size() > 1)
+		{
+			outputFile << code[i] << endl;
 		}
 	}
 }
@@ -520,10 +730,13 @@ int main(int argc, char* argv[])
 	string inputFileName = argv[1];
 	vector<string> code;
 	map<string, string> constants;
-	//char a = 'a';
-	//cout << char(97) <<endl;
+	
 	ReadCode(inputFileName, code);
+	DeleteOneStringComment(code);
+	DeleteMultiStringComment(code);
 	ParseCode(code);
+	WatchCyclesFOR(code);
+	SafeCode(code, inputFileName);
 	return 0;
 }
 

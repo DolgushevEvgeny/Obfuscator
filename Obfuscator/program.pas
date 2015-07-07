@@ -1,162 +1,85 @@
-Program Forest;
-
-Const
-  tree = 1;
-  car = 2;
-  man = 3;
-  train = 54;
-
-Var
-  Map : Array [1..10,1..10] Of Integer;
-  n, m : Integer;
-
-Function Build_Fence : Integer;
-Var
-  i, j, fence_items_count : Integer;
-Begin
-  fence_items_count := 0;
-  For i := 2 To n - 1 Do
-  Begin
-    For j := 2 To m - 1 Do
-    Begin
-      If Map[i,j] <> 0 Then
-      Begin
-        If Map[i,j+1] = 0 Then Inc(fence_items_count);
-        If Map[i+1,j] = 0 Then Inc(fence_items_count);
-        If Map[i,j-1] = 0 Then Inc(fence_items_count);
-        If Map[i-1,j] = 0 Then Inc(fence_items_count);
-      End;
-    End;
-  End;
-  Build_Fence := fence_items_count;
-End;
-
-Procedure Check_Around_Recurs(x, y : Integer);
-//Var
-Begin
-  If (x >= 2 And x < n And y in [2..m-1]) Then
-  Begin
-    If (Map[x,y+1] <> 1) And (Map[x,y+1] <> -1) And (Map[x,y+1] <> -2) Then
-    Begin
-      If Map[
-    End;
-    If (Map[x+1,y] <> 1) And (Map[x+1,y] <> -1) And (Map[x+1,y] <> -2) Then
-    Begin
-
-    End;
-    If (Map[x-1,y] <> 1)  And (Map[x-1,y] <> -1) And (Map[x-1,y] <> -2) Then
-    Begin
-
-    End;
-    If (Map[x,y-1] <> 1) And (Map[x,y-1] <> -1) And (Map[x,y-1] <> -2)  Then
-    Begin
-
-    End;
-  End;
-End;
-
-Procedure Check_Around;
-Var
-  i, j, temp, temp1 : Integer;
-Begin
-  temp := 0;
-  temp1 := 0;
-  For i := 2 To n - 1 Do
-  Begin
-    For j := 2 To m - 1 Do
-    Begin
-      If Map[i,j] <> 1 Then
-      Begin
-        If Map[i,j+1] = 1 Then
-          Inc(temp)
-        Else
-          Inc(temp1);
-        If Map[i+1,j] = 1 Then
-          Inc(temp)
-        Else
-          Inc(temp1);
-        If Map[i,j-1] = 1 Then
-          Inc(temp)
-        Else
-          Inc(temp1);
-        If Map[i-1,j] = 1 Then
-          Inc(temp)
-        Else
-          Inc(temp1);
-      End;
-      If temp = 4 Then
-        Map[i,j] := tree;
-      If temp1 = 4 Then
-        Map[i,j] := -1
-      Else
-        Map[i,j] := -2;
-      temp := 0;
-      temp1 := 0;
-      Check_Around_Recurs(i,j);
-    End;
-  End;
-End;
-
-Procedure Print_Map;
-Var
-  i, j : Integer;
-Begin
-For i := 1 to n Do
-  Begin
-    For j := 1 to m Do
-    Begin
-      Write(Map[i,j]);
-    End;
-    Writeln;
-  End;
-End;
-
-Procedure Fill_Map(k, p : Integer);
-Var
-  i, j : Integer;
-Begin
-  For i := 1 To k Do
-  Begin
-    For j := 1 To p Do
-    Begin
-      Map[i,j] := 0;
-    End;
-  End;
-End;
-
-Procedure Read_Map;
-Var
-  i, j, k, prom : Integer;
-  temp : String;
-  A : Text;
-Begin
-  k := 1;
-  Assign(A, 'input.txt');
-  Reset(A);
-  Read(A, n);
-  Readln(A, m);
-  Inc(n);Inc(n);
-  Inc(m);Inc(m);
-  Fill_Map(n,m);
-  While not EOF(A) Do
-  Begin
-    For i := 2 to n - 1 Do
-    Begin
-      Readln(A, temp);
-      For j := 2 to m - 1 Do
-      Begin
-        prom := Ord(temp[k]) - 48;
-        Map[i,j] := prom;
-        Inc(k);
-      End;
-    k := 1;
-    End;
-  End;
-  Close(A);
-End;
+Program lab1; 
+Const 
+  icon = '#'; 
+  icon_1 = '.'; 
+   
+Var 
+  A : Text; 
+  symbol : Char; 
+  Map : Array [1..10,1..10] Of Char; 
+  n, m, i, j, count : Integer; 
   
-Begin
-  Read_Map;
-  Check_Around;
-  Writeln(Build_Fence);
-End.
+Procedure Print_Map; 
+Var 
+  i, j : Integer; 
+Begin 
+For i := 1 to 6 Do
+  Begin 
+    For j := 1 to 6 Do
+    Begin 
+      Write(Map[i,j]); 
+    End; 
+    Writeln; 
+  End; 
+End;
+
+Procedure Paint_Map(k, p : Integer); 
+Begin 
+  Map[k,p] := icon_1; 
+  If (k + 1 <= n) Then 
+  Begin 
+    If (Map[k+1,p] = icon) Then 
+      Paint_Map(k+1,p); 
+  End; 
+   
+  If (k - 1 >= 1) Then 
+  Begin 
+    If (Map[k-1,p] = icon) Then 
+      Paint_Map(k-1,p); 
+  End; 
+   
+  If (p + 1 <= m) Then 
+  Begin 
+    If (Map[k,p+1] = icon) Then 
+      Paint_Map(k,p+1); 
+  End; 
+   
+  If (p - 1 >= 1) Then 
+  Begin 
+    If (Map[k,p-1] = icon) Then 
+      Paint_Map(k,p-1); 
+  End; 
+End;
+ 
+Begin 
+count := 0; 
+Assign(A, 'input3.txt'); 
+Reset(A); 
+Read(A, n); 
+Readln(A, m); 
+While not EOF(A) Do 
+Begin 
+  For i := 1 to n Do 
+  Begin 
+    For j := 1 to m Do 
+    Begin 
+      Read(A, symbol); 
+      Map[i,j] := symbol; 
+    End; 
+    Readln(A); 
+  End; 
+End; 
+Close(A); 
+For i := 1 To n Do 
+Begin 
+  For j := 1 To m Do 
+  Begin 
+    If (Map[i,j] = icon) Then 
+    Begin 
+      Paint_Map(i,j); 
+      Inc(count); 
+    End; 
+  End; 
+End; 
+Writeln(count); 
+End. 
