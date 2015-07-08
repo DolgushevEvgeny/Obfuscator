@@ -75,19 +75,25 @@ string RemoveExtraSpaces(const string &processedString)
 	return resultString;
 }
 
+vector<string> SplitString(const string &processedString, const char divider)
+{
+	istringstream is(processedString);
+	string s;
+	vector<string> arrayStrings;
+	while (getline(is, s, divider))
+	{
+		arrayStrings.push_back(s);
+	}
+	return arrayStrings;
+}
+
 void FillConstants(const vector<string> &code, size_t &line)
 {
 	string codeString = code[line];
 	string compare = ToLowerCase(codeString);
 	while ((compare != "var") && (compare != "type") && (compare.size()))
 	{
-		istringstream is(codeString);
-		string s;
-		vector<string> arrayStrings;
-		while (getline(is, s, '='))
-		{
-			arrayStrings.push_back(s);
-		}
+		vector<string> arrayStrings = SplitString(codeString, '=');
 
 		for (size_t i = 0; i < arrayStrings.size(); ++i)
 		{
@@ -135,13 +141,7 @@ void ReadCode(const string inputFileName, vector<string> &code)
 		codeString = RemoveExtraSpaces(codeString);
 		endStringFlag = IsEndString(codeString);
 
-		istringstream is(codeString);
-		string s;
-		vector<string> arrayStrings;
-		while (getline(is, s, ';'))
-		{
-			arrayStrings.push_back(s);
-		}
+		vector<string> arrayStrings = SplitString(codeString, ';');
 
 		for (size_t i = 0; i < arrayStrings.size(); ++i)
 		{
@@ -346,7 +346,6 @@ string CreateNewProceduresAndFunctionsName(void)
 				}
 			}
 		}
-
 		compare = CheckForNewProcsAndFuncs(result);
 	}
 
@@ -390,13 +389,7 @@ void CheckOnBrackets(const string &codeString)
 	if (left && right)
 	{
 		string temp = codeString.substr(left, right - left - 1);
-		istringstream is(temp);
-		string s;
-		vector<string> arrayStrings;
-		while (getline(is, s, ';'))
-		{
-			arrayStrings.push_back(s);
-		}
+		vector<string> arrayStrings = SplitString(temp, ';');
 
 		for (size_t j = 0; j < arrayStrings.size(); ++j)
 		{
@@ -495,20 +488,21 @@ string DeleteMultiStringComment(const string &codeString)
 
 void ExpandCycleFOR(vector<string> &code, const string &cycleType, const string &variable, const string &left, const string &right, bool isInteger, size_t &line)
 {
-	++line;
-	string codeString = ToLowerCase(code[line]);
+	size_t lineCount = line;
+	++lineCount;
+	string codeString = ToLowerCase(code[lineCount]);
 	codeString = RemoveExtraSpaces(codeString);
 
 	size_t start, end;
-	int first, second;
+	int first, cyclesCount;
 	if (codeString == "begin")
 	{
-		start = line;
+		start = lineCount;
 		int cycles = 1;
 		while (cycles)
 		{
-			++line;
-			string codeString = ToLowerCase(code[line]);
+			++lineCount;
+			string codeString = ToLowerCase(code[lineCount]);
 			codeString = RemoveExtraSpaces(codeString);
 			if (codeString == "begin")
 			{
@@ -520,10 +514,12 @@ void ExpandCycleFOR(vector<string> &code, const string &cycleType, const string 
 				--cycles;
 			}
 		}
-		end = line;
+		end = lineCount;
 
 		vector<string> cyclesArray;
 		string temp;
+
+		//////////
 		if (isInteger)
 		{
 			temp += variable;
@@ -538,27 +534,141 @@ void ExpandCycleFOR(vector<string> &code, const string &cycleType, const string 
 			temp += left;
 			temp += ";";
 		}
-		
+		//////////
+
 		cyclesArray.push_back(temp);
 		for (size_t i = start; i < end + 1; ++i)
 		{
 			cyclesArray.push_back(code[i]);
 		}
 		
+		cyclesCount = atoi(right.c_str());
+		first = atoi(left.c_str());
 		string temp1;
 		if (cycleType == "to")
 		{
-			temp1 += ("inc(variable);");
+			temp1 += ("inc(");
+			temp1 += variable;
+			temp1 += (");");
+			cyclesCount = abs(cyclesCount - first + 1);
 		}
 		if (cycleType == "downto")
 		{
-			temp1+= ("dec(variable);");
+			temp1 += ("dec(");
+			temp1 += variable;
+			temp1 += (");");
+			cyclesCount = abs(first - cyclesCount + 1);
 		}
 		cyclesArray.push_back(temp1);
+
+		for (size_t i = start - 1; i < end + 1; ++i)
+		{
+			code[i] = "";
+		}
+
+		vector<string>::iterator position;
+		for (size_t i = 0; i < cyclesCount; ++i)
+		{
+			position = code.begin() + start - 1;
+			if (i == 0)
+			{
+				code.insert(position, cyclesArray.begin(), cyclesArray.end());
+			}
+			else
+			{
+				code.insert(position + cyclesArray.size(), cyclesArray.begin() + 1, cyclesArray.end());
+			}
+		}
 	}
 	else
 	{
+		string result;
+		bool isEndOfString = false;
+		start = lineCount;
+		while (!isEndOfString)
+		{
+			string temp = code[lineCount];
+			for (size_t i = 0; i < temp.size(); ++i)
+			{
+				if (temp[i] != ';')
+				{
+					result.push_back(temp[i]);
+				}
+				else
+				{
+					result.push_back(';');
+					isEndOfString = true;
+					break;
+				}
+			}
+			if (isEndOfString)
+			{
+				break;
+			}
+			++lineCount;
+		}
+		end = lineCount;
 
+		vector<string> cyclesArray;
+		string temp;
+
+		//////////
+		if (isInteger)
+		{
+			temp += variable;
+			temp += " := ";
+			temp += left;
+			temp += ";";
+		}
+		else
+		{
+			temp += variable;
+			temp += " := ";
+			temp += left;
+			temp += ";";
+		}
+		//////////
+
+		cyclesArray.push_back(temp);
+		cyclesArray.push_back(result);
+
+		cyclesCount = atoi(right.c_str());
+		first = atoi(left.c_str());
+		string temp1;
+		if (cycleType == "to")
+		{
+			temp1 += ("inc(");
+			temp1 += variable;
+			temp1 += (");");
+			cyclesCount = abs(cyclesCount - first + 1);
+		}
+		if (cycleType == "downto")
+		{
+			temp1 += ("dec(");
+			temp1 += variable;
+			temp1 += (");");
+			cyclesCount = abs(first - cyclesCount + 1);
+		}
+		cyclesArray.push_back(temp1);
+
+		for (size_t i = start - 1; i < end + 1; ++i)
+		{
+			code[i] = "";
+		}
+
+		vector<string>::iterator position;
+		for (size_t i = 0; i < cyclesCount; ++i)
+		{
+			position = code.begin() + start - 1;
+			if (i == 0)
+			{
+				code.insert(position, cyclesArray.begin(), cyclesArray.end());
+			}
+			else
+			{
+				code.insert(position + cyclesArray.size(), cyclesArray.begin() + 1, cyclesArray.end());
+			}
+		}
 	}
 }
 
@@ -617,9 +727,204 @@ bool isVariableInteger(const string &codeString)
 	return false;
 }
 
-void ChangeCycleForWHILE()
+void ChangeCycleForWHILE(vector<string> &code, const string &cycleType, const string &variable, const string &left, const string &right, bool isInteger, size_t &line)
 {
+	size_t lineCount = line;
+	++lineCount;
+	string codeString = ToLowerCase(code[lineCount]);
+	codeString = RemoveExtraSpaces(codeString);
 
+	size_t start, end;
+	int first, second;
+	if (codeString == "begin")
+	{
+		start = lineCount;
+		int cycles = 1;
+		while (cycles)
+		{
+			++lineCount;
+			string codeString = ToLowerCase(code[lineCount]);
+			codeString = RemoveExtraSpaces(codeString);
+			if (codeString == "begin")
+			{
+				++cycles;
+			}
+			codeString.erase(codeString.end() - 1);
+			if (codeString == "end")
+			{
+				--cycles;
+			}
+		}
+		end = lineCount;
+
+		vector<string> cyclesArray;
+		string temp;
+
+		//////////
+		if (isInteger)
+		{
+			temp += variable;
+			temp += " := ";
+			temp += left;
+			temp += ";";
+		}
+		else
+		{
+			temp += variable;
+			temp += " := ";
+			temp += left;
+			temp += ";";
+		}
+		//////////
+
+		string temp1;
+		if (cycleType == "to")
+		{
+			temp1 += ("While ");
+			temp1 += variable;
+			temp1 += (" < ");
+			temp1 += right;
+			temp1 += (" + 1");
+			temp1 += (" Do");
+		}
+		if (cycleType == "downto")
+		{
+			temp1 += ("While ");
+			temp1 += variable;
+			temp1 += (" > ");
+			temp1 += right;
+			temp1 += (" - 1");
+			temp1 += (" Do");
+		}
+		//////////
+
+		cyclesArray.push_back(temp);
+		cyclesArray.push_back(temp1);
+		for (size_t i = start; i < end; ++i)
+		{
+			cyclesArray.push_back(code[i]);
+		}
+		temp1.clear();
+		if (cycleType == "to")
+		{
+			temp1 += ("inc(");
+			temp1 += variable;
+			temp1 += (");");
+		}
+		if (cycleType == "downto")
+		{
+			temp1 += ("dec(");
+			temp1 += variable;
+			temp1 += (");");
+		}
+		cyclesArray.push_back(temp1);
+		cyclesArray.push_back(code[end]);
+		for (size_t i = start - 1; i < end + 1; ++i)
+		{
+			code[i] = "";
+		}
+
+		vector<string>::iterator position;
+		position = code.begin() + start - 1;
+		code.insert(position, cyclesArray.begin(), cyclesArray.end());
+	}
+	else
+	{
+		string result;
+		bool isEndOfString = false;
+		start = lineCount;
+		while (!isEndOfString)
+		{
+			string temp = code[lineCount];
+			for (size_t i = 0; i < temp.size(); ++i)
+			{
+				if (temp[i] != ';')
+				{
+					result.push_back(temp[i]);
+				}
+				else
+				{
+					result.push_back(';');
+					isEndOfString = true;
+					break;
+				}
+			}
+			if (isEndOfString)
+			{
+				break;
+			}
+			++lineCount;
+		}
+		end = lineCount;
+
+		vector<string> cyclesArray;
+		string temp;
+
+		//////////
+		if (isInteger)
+		{
+			temp += variable;
+			temp += " := ";
+			temp += left;
+			temp += ";";
+		}
+		else
+		{
+			temp += variable;
+			temp += " := ";
+			temp += left;
+			temp += ";";
+		}
+		//////////
+		string temp1;
+		if (cycleType == "to")
+		{
+			temp1 += ("While ");
+			temp1 += variable;
+			temp1 += (" < ");
+			temp1 += right;
+			temp1 += (" + 1");
+			temp1 += (" Do");
+		}
+		if (cycleType == "downto")
+		{
+			temp1 += ("While ");
+			temp1 += variable;
+			temp1 += (" > ");
+			temp1 += right;
+			temp1 += (" - 1");
+			temp1 += (" Do");
+		}
+		//////////
+
+		cyclesArray.push_back(temp);
+		cyclesArray.push_back(temp1);
+		cyclesArray.push_back("Begin");
+		cyclesArray.push_back(result);
+
+		temp1.clear();
+		if (cycleType == "to")
+		{
+			temp1 += ("inc(");
+			temp1 += variable;
+			temp1 += (");");
+		}
+		if (cycleType == "downto")
+		{
+			temp1 += ("dec(");
+			temp1 += variable;
+			temp1 += (");");
+		}
+		cyclesArray.push_back(temp1);
+		cyclesArray.push_back("End;");
+		for (size_t i = start - 1; i < end + 1; ++i)
+		{
+			code[i] = "";
+		}
+		vector<string>::iterator position;
+		position = code.begin() + start - 1;
+		code.insert(position, cyclesArray.begin(), cyclesArray.end());
+	}
 }
 
 void ChooseTypeOfCycle(vector<string> &code, size_t &line)
@@ -629,16 +934,7 @@ void ChooseTypeOfCycle(vector<string> &code, size_t &line)
 	int first_1 = 0, second_1 = 0, difference = 0;
 	string first, second, cycleType, variable;
 
-	///////////
-	istringstream is(codeString);
-	string s;
-	vector<string> arrayStrings;
-	while (getline(is, s, ' '))
-	{
-		arrayStrings.push_back(s);
-	}
-	///////////
-
+	vector<string> arrayStrings = SplitString(codeString, ' ');
 
 	variable = arrayStrings[1];
 	cycleType = arrayStrings[4];
@@ -665,14 +961,18 @@ void ChooseTypeOfCycle(vector<string> &code, size_t &line)
 	if (first_1 && second_1)
 	{
 		difference = abs(second_1 - first_1);
-		if (difference <= 5 && difference > 0)
+		if (difference <= 4 && difference > 0)
 		{
 			ExpandCycleFOR(code, cycleType, variable, arrayStrings[3], arrayStrings[5], true, line);
 		}
 		else
 		{
-			ChangeCycleForWHILE();/////////////
+			ChangeCycleForWHILE(code, cycleType, variable, arrayStrings[3], arrayStrings[5], true, line);
 		}
+	}
+	else
+	{
+		ChangeCycleForWHILE(code, cycleType, variable, arrayStrings[3], arrayStrings[5], false, line);
 	}
 
 }
