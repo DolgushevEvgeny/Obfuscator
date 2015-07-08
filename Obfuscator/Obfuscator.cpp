@@ -87,6 +87,14 @@ vector<string> SplitString(const string &processedString, const char divider)
 	return arrayStrings;
 }
 
+void ChooseStringAndProcessingIt(const vector<string> &code, size_t &line, string &codeString, string &compare)
+{
+	++line;
+	codeString = code[line];
+	compare = ToLowerCase(codeString);
+	compare = RemoveExtraSpaces(compare);
+}
+
 void FillConstants(const vector<string> &code, size_t &line)
 {
 	string codeString = code[line];
@@ -101,12 +109,9 @@ void FillConstants(const vector<string> &code, size_t &line)
 		}
 
 		arrayStrings[1].erase(arrayStrings[1].end() - 1);
-
 		constants[arrayStrings[0]] = arrayStrings[1];
-		++line;
-		codeString = code[line];
-		compare = ToLowerCase(codeString);
-		compare = RemoveExtraSpaces(compare);
+
+		ChooseStringAndProcessingIt(code, line, codeString, compare);
 	}
 	--line;
 }
@@ -181,6 +186,40 @@ bool CheckForNewProcsAndFuncs(const string &newElement)
 	return false;
 }
 
+void ChooseLetterInNewName(string &result)
+{
+	int letter = rand() % 26 + 97;
+	int toLower = rand() % 2;
+	if (toLower)
+	{
+		result.push_back(toupper(char(letter)));
+	}
+	else
+	{
+		result.push_back(char(letter));
+	}
+}
+
+void ChooseNewDigitInName(string &result)
+{
+	int digit = rand() % 10 + 48;
+	result.push_back(digit);
+}
+
+void ChooseTypeOfSymbolInNewName(string &result)
+{
+	int letterType = rand() % 2;
+
+	if (letterType)
+	{
+		ChooseLetterInNewName(result);
+	}
+	else
+	{
+		ChooseNewDigitInName(result);
+	}
+}
+
 string CreateNewVariable(void)
 {
 	string result;
@@ -191,41 +230,12 @@ string CreateNewVariable(void)
 	{
 		result.clear();
 		size_t size = rand() % 10 + 1;
-		int letter = rand() % 26 + 97;
-		int toLower = rand() % 2;
-		if (toLower)
-		{
-			result.push_back(toupper(char(letter)));
-		}
-		else
-		{
-			result.push_back(char(letter));
-		}
+		ChooseLetterInNewName(result);
 
 		for (size_t i = 0; i < size - 1; ++i)
 		{
-			int letterType = rand() % 2;
-
-			if (letterType)
-			{
-				letter = rand() % 26 + 97;
-				toLower = rand() % 2;
-				if (toLower)
-				{
-					result.push_back(toupper(char(letter)));
-				}
-				else
-				{
-					result.push_back(char(letter));
-				}
-			}
-			else
-			{
-				int digit = rand() % 10 + 48;
-				result.push_back(digit);
-			}
+			ChooseTypeOfSymbolInNewName(result);
 		}
-
 		compare = CheckForNewVariable(result);
 	}
 
@@ -257,7 +267,6 @@ void AddVariables(const string &codeString)
 
 			variables[originalVariable] = newVariable;
 		}
-
 		originalVariable.clear();
 		newVariable.clear();
 	}
@@ -285,11 +294,7 @@ void FillVars(const vector<string> &code, size_t &line)
 			return;
 		}
 		AddVariables(codeString);
-
-		++line;
-		codeString = code[line];
-		compare = ToLowerCase(codeString);
-		compare = RemoveExtraSpaces(compare);
+		ChooseStringAndProcessingIt(code, line, codeString, compare);
 	}
 }
 
@@ -303,16 +308,7 @@ string CreateNewProceduresAndFunctionsName(void)
 	{
 		result.clear();
 		size_t size = rand() % 10 + 1;
-		int letter = rand() % 26 + 97;
-		int toLower = rand() % 2;
-		if (toLower)
-		{
-			result.push_back(toupper(char(letter)));
-		}
-		else
-		{
-			result.push_back(char(letter));
-		}
+		ChooseLetterInNewName(result);
 
 		for (size_t i = 0; i < size - 1; ++i)
 		{
@@ -324,26 +320,7 @@ string CreateNewProceduresAndFunctionsName(void)
 
 			if (i < size - 1)
 			{
-				int letterType = rand() % 2;
-
-				if (letterType)
-				{
-					letter = rand() % 26 + 97;
-					toLower = rand() % 2;
-					if (toLower)
-					{
-						result.push_back(toupper(char(letter)));
-					}
-					else
-					{
-						result.push_back(char(letter));
-					}
-				}
-				else
-				{
-					int digit = rand() % 10 + 48;
-					result.push_back(digit);
-				}
+				ChooseTypeOfSymbolInNewName(result);
 			}
 		}
 		compare = CheckForNewProcsAndFuncs(result);
@@ -486,6 +463,16 @@ string DeleteMultiStringComment(const string &codeString)
 	return result;
 }
 
+string CreateString(const string &variable, const string &left)
+{
+	string codeString;
+	codeString += variable;
+	codeString += " := ";
+	codeString += left;
+	codeString += ";";
+	return codeString;
+}
+
 void ExpandCycleFOR(vector<string> &code, const string &cycleType, const string &variable, const string &left, const string &right, bool isInteger, size_t &line)
 {
 	size_t lineCount = line;
@@ -519,22 +506,7 @@ void ExpandCycleFOR(vector<string> &code, const string &cycleType, const string 
 		vector<string> cyclesArray;
 		string temp;
 
-		//////////
-		if (isInteger)
-		{
-			temp += variable;
-			temp += " := ";
-			temp += left;
-			temp += ";";
-		}
-		else
-		{
-			temp += variable;
-			temp += " := ";
-			temp += left;
-			temp += ";";
-		}
-		//////////
+		temp = CreateString(variable, left);
 
 		cyclesArray.push_back(temp);
 		for (size_t i = start; i < end + 1; ++i)
@@ -612,22 +584,7 @@ void ExpandCycleFOR(vector<string> &code, const string &cycleType, const string 
 		vector<string> cyclesArray;
 		string temp;
 
-		//////////
-		if (isInteger)
-		{
-			temp += variable;
-			temp += " := ";
-			temp += left;
-			temp += ";";
-		}
-		else
-		{
-			temp += variable;
-			temp += " := ";
-			temp += left;
-			temp += ";";
-		}
-		//////////
+		temp = CreateString(variable, left);
 
 		cyclesArray.push_back(temp);
 		cyclesArray.push_back(result);
@@ -760,22 +717,7 @@ void ChangeCycleForWHILE(vector<string> &code, const string &cycleType, const st
 		vector<string> cyclesArray;
 		string temp;
 
-		//////////
-		if (isInteger)
-		{
-			temp += variable;
-			temp += " := ";
-			temp += left;
-			temp += ";";
-		}
-		else
-		{
-			temp += variable;
-			temp += " := ";
-			temp += left;
-			temp += ";";
-		}
-		//////////
+		temp = CreateString(variable, left);
 
 		string temp1;
 		if (cycleType == "to")
@@ -860,22 +802,8 @@ void ChangeCycleForWHILE(vector<string> &code, const string &cycleType, const st
 		vector<string> cyclesArray;
 		string temp;
 
-		//////////
-		if (isInteger)
-		{
-			temp += variable;
-			temp += " := ";
-			temp += left;
-			temp += ";";
-		}
-		else
-		{
-			temp += variable;
-			temp += " := ";
-			temp += left;
-			temp += ";";
-		}
-		//////////
+		temp = CreateString(variable, left);
+
 		string temp1;
 		if (cycleType == "to")
 		{
@@ -927,6 +855,18 @@ void ChangeCycleForWHILE(vector<string> &code, const string &cycleType, const st
 	}
 }
 
+void CalculateOneBorderOfRange(const string &codeString, int &first_1, string &first)
+{
+	if (isVariableInteger(codeString))
+	{
+		first_1 = atoi(codeString.c_str());
+	}
+	else
+	{
+		first = codeString;
+	}
+}
+
 void ChooseTypeOfCycle(vector<string> &code, size_t &line)
 {
 	string codeString = ToLowerCase(code[line]);
@@ -939,24 +879,8 @@ void ChooseTypeOfCycle(vector<string> &code, size_t &line)
 	variable = arrayStrings[1];
 	cycleType = arrayStrings[4];
 
-	///////////
-	if (isVariableInteger(arrayStrings[3]))
-	{
-		first_1 = atoi(arrayStrings[3].c_str());
-	}
-	else
-	{
-		first = arrayStrings[3];
-	}
-	if (isVariableInteger(arrayStrings[5]))
-	{
-		second_1 = atoi(arrayStrings[5].c_str());
-	}
-	else
-	{
-		second = arrayStrings[5];
-	}
-	///////////
+	CalculateOneBorderOfRange(arrayStrings[3], first_1, first);
+	CalculateOneBorderOfRange(arrayStrings[5], second_1, second);
 
 	if (first_1 && second_1)
 	{
