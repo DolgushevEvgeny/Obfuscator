@@ -8,6 +8,8 @@ using namespace std;
 map<string, string> constants;
 map<string, string> variables;
 map<string, string> procsAndFuncs;
+set<string> keyWords;
+set<char> setOfSpecialChars = { '+', '-', '/', '*', '=', '<', '>', '[', ']', '.', ',', '(', ')', ':', ';', '^', '@', '$', '#' };
 bool comment_flag = false;
 
 string ToLowerCase(const string &codeString)
@@ -95,8 +97,10 @@ void ChooseStringAndProcessingIt(const vector<string> &code, size_t &line, strin
 	compare = RemoveExtraSpaces(compare);
 }
 
-void FillConstants(const vector<string> &code, size_t &line)
+void FillConstants(vector<string> &code, size_t &line)
 {
+	size_t start, end;
+	start = line - 1;
 	string codeString = code[line];
 	string compare = ToLowerCase(codeString);
 	while ((compare != "var") && (compare != "type") && (compare.size()))
@@ -112,6 +116,11 @@ void FillConstants(const vector<string> &code, size_t &line)
 		constants[arrayStrings[0]] = arrayStrings[1];
 
 		ChooseStringAndProcessingIt(code, line, codeString, compare);
+	}
+	end = line;
+	for (size_t i = start; i < end; ++i)
+	{
+		code[i] = "";
 	}
 	--line;
 }
@@ -186,9 +195,8 @@ bool CheckForNewProcsAndFuncs(const string &newElement)
 	return false;
 }
 
-void ChooseLetterInNewName(string &result)
+void ChooseSizeOfLetter(string &result, const int &letter)
 {
-	int letter = rand() % 26 + 97;
 	int toLower = rand() % 2;
 	if (toLower)
 	{
@@ -198,6 +206,12 @@ void ChooseLetterInNewName(string &result)
 	{
 		result.push_back(char(letter));
 	}
+}
+
+void ChooseLetterInNewName(string &result)
+{
+	int letter = rand() % 26 + 97;
+	ChooseSizeOfLetter(result, letter);
 }
 
 void ChooseNewDigitInName(string &result)
@@ -629,7 +643,7 @@ void ExpandCycleFOR(vector<string> &code, const string &cycleType, const string 
 	}
 }
 
-void ParseCode(const vector<string> &code)
+void ParseCode(vector<string> &code)
 {
 	for (size_t i = 0; i < code.size(); ++i)
 	{
@@ -637,8 +651,6 @@ void ParseCode(const vector<string> &code)
 		compare = RemoveExtraSpaces(compare);
 		if (compare.size() > 1)
 		{
-			//string compare = ToLowerCase(code[i]);
-			//compare = RemoveExtraSpaces(compare);
 			if (compare == "const")
 			{
 				++i;
@@ -646,7 +658,6 @@ void ParseCode(const vector<string> &code)
 			}
 			else
 			{
-				//compare = ToLowerCase(code[i]);
 				if (compare == "var")
 				{
 					++i;
@@ -692,7 +703,6 @@ void ChangeCycleForWHILE(vector<string> &code, const string &cycleType, const st
 	codeString = RemoveExtraSpaces(codeString);
 
 	size_t start, end;
-	int first, second;
 	if (codeString == "begin")
 	{
 		start = lineCount;
@@ -944,8 +954,151 @@ void SafeCode(const vector<string> &code, const string &inputFileName)
 	{
 		if (code[i].size() > 1)
 		{
-			outputFile << code[i] << endl;
+			outputFile << code[i];
 		}
+	}
+}
+
+void WriteWordInRandom(string &lexem)
+{
+	string result;
+	for (size_t i = 0; i < lexem.size(); ++i)
+	{
+		if ((tolower(lexem[i]) >= 'a' && tolower(lexem[i]) <= 'z'))
+		{
+			ChooseSizeOfLetter(result, lexem[i]);
+		}
+		else
+		{
+			result.push_back(lexem[i]);
+		}
+	}
+	lexem = result;
+}
+
+void ChooseTypeOfLexem(string &lexem, string &result)
+{
+	string codeString = ToLowerCase(lexem);
+	codeString = RemoveExtraSpaces(codeString);
+
+	if (keyWords.find(codeString) != keyWords.end())
+	{
+		result.push_back(' ');
+		WriteWordInRandom(lexem);
+		result += lexem;
+		result.push_back(' ');
+		return;
+	}
+	else
+	{
+		if (constants.find(codeString) != constants.end())
+		{
+			string change = constants[codeString];
+			WriteWordInRandom(change);
+			result += change;
+			return;
+		}
+		else
+		{
+			if (variables.find(codeString) != variables.end())
+			{
+				string change = variables[codeString];
+				WriteWordInRandom(change);
+				result += change;
+				return;
+			}
+			else
+			{
+				if (procsAndFuncs.find(codeString) != procsAndFuncs.end())
+				{
+					string change = procsAndFuncs[codeString];
+					WriteWordInRandom(change);
+					result += change;
+					return;
+				}
+				else
+				{
+					WriteWordInRandom(codeString);
+					result += codeString;
+					return;
+				}
+			}
+		}
+	}
+}
+
+void CreateNewCode(vector<string> &code)
+{
+	bool wasQuote = false;
+	string lexem, newCodeString;
+	for (size_t i = 0; i < code.size(); ++i)
+	{
+		string result, codeString = code[i];
+		for (size_t j = 0; j < codeString.size(); ++j)
+		{
+			if (!wasQuote)
+			{
+				if (codeString[j] == '\'')
+				{
+					wasQuote = true;
+					ChooseTypeOfLexem(lexem, result);
+					newCodeString += result;
+					lexem.clear();
+					result.clear();
+					newCodeString.push_back(codeString[j]);
+				}
+				else
+				{
+					if (codeString[j] != ' ')
+					{
+						if ((tolower(codeString[j]) >= 'a' && tolower(codeString[j]) <= 'z'))
+						{
+							lexem.push_back(codeString[j]);
+						}
+						else
+						{
+							if (codeString[j] >= '0' && codeString[j] <= '9')
+							{
+								lexem.push_back(codeString[j]);
+							}
+							else
+							{
+								if (setOfSpecialChars.find(codeString[j]) != setOfSpecialChars.end())
+								{
+									ChooseTypeOfLexem(lexem, result);
+									newCodeString += result;
+									lexem.clear();
+									result.clear();
+									newCodeString.push_back(codeString[j]);
+								}
+								else
+								{
+									lexem.push_back(codeString[j]);
+								}
+							}
+						}
+					}
+					else
+					{
+						ChooseTypeOfLexem(lexem, result);
+						newCodeString += result;
+						lexem.clear();
+						result.clear();
+					}
+				}
+			}
+			else
+			{
+				wasQuote = false;
+				newCodeString.push_back(codeString[j]);
+			}
+		}
+		ChooseTypeOfLexem(lexem, result);
+		newCodeString += result;
+		code[i] = newCodeString;
+		newCodeString.clear();
+		lexem.clear();
+		result.clear();
 	}
 }
 
@@ -954,12 +1107,34 @@ int main(int argc, char* argv[])
 	string inputFileName = argv[1];
 	vector<string> code;
 	map<string, string> constants;
-	
+		
+	vector<string> initKeyWords =
+	{ "and", "exports", "mod", "shr", "array", "file", "nil", "string",
+	"asm", "for", "not", "then", "begin", "function", "object", "to",
+	"case", "goto", "of", "type", "const", "if", "or", "unit", "constructor",
+	"implementation", "packed", "until", "destructor", "in", "procedure", "uses",
+	"div", "inherited", "program", "var", "do", "inline", "record", "while",
+	"downto", "interface", "repeat", "with", "else", "label", "set", "xor",
+	"end", "library", "shl", "real", "word", "double", "integer", "byte",
+	"shortint", "smallint", "longword", "int64", "qword", "extended", "single",
+	"real48", "boolean", "char", "readln", "writeln", "read", "write", "text", "crt",
+	"abs", "sin", "cos", "arctan", "sqrt", "sqr", "power", "exp", "ln", "frac",
+	"lnt", "random", "succ", "pred", "inc", "dec", "str", "val", "trunc", "round",
+	"odd", "chr", "ord", "length", "concat", "copy", "delete", "new", "dispose",
+	"insert", "pos", "assign", "rewrite", "close", "reset", "seek", "true", "false",
+	"exit", "fileexists", "eof", "halt", "clrscr" };
+
+	for (size_t i = 0; i < initKeyWords.size(); ++i)
+	{
+		keyWords.insert(initKeyWords[i]);
+	}
+
 	ReadCode(inputFileName, code);
 	DeleteOneStringComment(code);
 	DeleteMultiStringComment(code);
 	ParseCode(code);
 	WatchCyclesFOR(code);
+	CreateNewCode(code);
 	SafeCode(code, inputFileName);
 	return 0;
 }
